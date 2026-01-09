@@ -168,6 +168,21 @@ int rtbt_hci_dev_receive(void *bt_dev, int pkt_type, char *buf, int len)
     skb->dev = g_hdev;
     hci_skb_pkt_type(skb) = pkt_type; // set pkt type
     memcpy(skb_put(skb, len), buf, len);
+    
+    /* Patch for Ralink firmware bug: HCI_Remote_Name_Request_Cancel (0x041a)
+     * returns 7 bytes (Status + BD_ADDR) but Linux expects 1 byte (Status).
+     */
+    if (pkt_type == HCI_EVENT_PKT && len >= 6 && skb->data[0] == 0x0E) {
+        // Event Code 0x0E (Command Complete), Opcode at index 3
+        unsigned short opcode = ((unsigned char)skb->data[4] << 8) | (unsigned char)skb->data[3];
+        if (opcode == 0x041a && skb->data[1] > 4) {
+             // Truncate parameters to just Status (1 byte)
+             // New Param Len = 1 (Num) + 2 (Op) + 1 (Status) = 4
+             skb->data[1] = 4;
+             __skb_trim(skb, 6); // Header(2) + Params(4) = 6
+        }
+    }
+    
     if (pkt_type == HCI_SCODATA_PKT)
         BT_DBG("%s(): send sco data to OS, time=0x%lx", __FUNCTION__, jiffies);
     hdev = (struct hci_dev *)skb->dev;
@@ -314,7 +329,7 @@ int rtbt_hps_iface_init(
 #else
                 hdev->type = HCI_PCI;
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,10,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,0,0)
                 // dev_type completely removed https://github.com/torvalds/linux/commit/84a4bb6548a29326564f0e659fb8064503ecc1c7
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,8,0)
                 hdev->dev_type = HCI_PRIMARY;

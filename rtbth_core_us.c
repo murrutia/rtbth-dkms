@@ -1896,12 +1896,12 @@ unsigned int rtbth_us_poll(struct file *filp, poll_table *wait){
     unsigned int mask = 0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,16,0)
-    if (kfifo_size(gpAd->evt_fifo) == 0)
+    if (kfifo_len(gpAd->evt_fifo) == 0)
     {
         poll_wait(filp, &evt_wq,  wait);
 
         /* empty let select sleep */
-        if((kfifo_size(gpAd->evt_fifo) != 0))
+        if((kfifo_len(gpAd->evt_fifo) != 0))
         {
             mask |= EPOLLIN | EPOLLRDNORM;  /* readable */
         }
@@ -1913,12 +1913,12 @@ unsigned int rtbth_us_poll(struct file *filp, poll_table *wait){
 
     mask |= EPOLLOUT | EPOLLWRNORM; /* writable */
 #else
-    if (kfifo_size(gpAd->evt_fifo) == 0)
+    if (kfifo_len(gpAd->evt_fifo) == 0)
     {
         poll_wait(filp, &evt_wq,  wait);
 
         /* empty let select sleep */
-        if((kfifo_size(gpAd->evt_fifo) != 0))
+        if((kfifo_len(gpAd->evt_fifo) != 0))
         {
             mask |= POLLIN | POLLRDNORM;  /* readable */
         }
